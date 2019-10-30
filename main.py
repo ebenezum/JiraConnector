@@ -13,16 +13,17 @@ def downloadTimeLogs(serverURL, projectName):
 
     block_size =100
     block_num = 0
-
-    auth = pd.Series()
-    wlDt = pd.Series()
-    wlTS = pd.Series()
-    summ = pd.Series()
-    iKey = pd.Series()
+#1. convert pandas series into python arrays and add them to dataframe at the end
+#2. choose and use excel manip library - importing pandas could not be needed.
+    auth = list()
+    wlDt = list()
+    wlTS = list()
+    summ = list()
+    iKey = list()
 
     while True:
         start_idx = block_num * block_size
-        issues_in_project = jac.search_issues('project='+ projectName, start_idx, block_size)
+        issues_in_project = jac.search_issues('project='+projectName, start_idx, block_size)
         if len(issues_in_project) == 0:
             break
         block_num += 1
@@ -31,11 +32,11 @@ def downloadTimeLogs(serverURL, projectName):
         for issue in issues_in_project:
             wrkl = jac.worklogs(issue.key)
             for wrk in wrkl:
-                summ.add(issue.fields.summary)
-                iKey.add(issue.key)
-                auth.add(wrk.author)
-                wlTS.add(wrk.timeSpent)
-                wlDt.add(wrk.started)
+                summ.append(issue.fields.summary)
+                iKey.append(issue.key)
+                auth.append(wrk.author)
+                wlTS.append(wrk.timeSpentSeconds/3600)
+                wlDt.append(wrk.started)
     preFrame = {
         'Summary':summ,
         'Key':iKey,
