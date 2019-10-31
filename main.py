@@ -2,6 +2,8 @@
 
 from jira import JIRA
 import pandas as pd
+import numpy as np
+
 
 def downloadTimeLogs(serverURL, projectName):
     jira_options = {
@@ -13,8 +15,6 @@ def downloadTimeLogs(serverURL, projectName):
 
     block_size =100
     block_num = 0
-#1. convert pandas series into python arrays and add them to dataframe at the end
-#2. choose and use excel manip library - importing pandas could not be needed.
     auth = list()
     wlDt = list()
     wlTS = list()
@@ -36,7 +36,7 @@ def downloadTimeLogs(serverURL, projectName):
                 iKey.append(issue.key)
                 auth.append(wrk.author)
                 wlTS.append(wrk.timeSpentSeconds/3600)
-                wlDt.append(wrk.started)
+                wlDt.append(wrk.started[:10])
     preFrame = {
         'Summary':summ,
         'Key':iKey,
@@ -45,7 +45,10 @@ def downloadTimeLogs(serverURL, projectName):
         'Date':wlDt
     }
     result = pd.DataFrame(preFrame)
-    result.to_excel('final/'+ projectName + '.xlsx')
+    # pivot = pd.pivot_table(result, values='TimeSpent',index=['Date','Summary'], columns='Author',aggfunc=np.sum)
+    with pd.ExcelWriter('final/'+ projectName + '.xlsx') as writer:
+        result.to_excel(writer, sheet_name='Raw Data')
+        # pivot.to_excel(writer, sheet_name='Pivot')
     return "Done"
 
 print(
