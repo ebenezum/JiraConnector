@@ -3,10 +3,7 @@
 from jira import JIRA
 import pandas as pd
 import json
-
-JIRA_USER = 'marcin.wroblewski@scalac.io'
-JIRA_PASS = 'k1T27hk7HhuYlM2tmOIf6AFB'
-SERVER_URL = 'http://prp.atlassian.net'
+from config import SERVER_URL, JIRA_PASS, JIRA_USER
 
 
 def readAllProjects():
@@ -61,17 +58,31 @@ def downloadTimeLogs(projectName):
         'Date': wlDt
     }
     result = pd.DataFrame(preFrame)
-    # pivot = pd.pivot_table(result, values='TimeSpent',index=['Date','Summary'], columns='Author',aggfunc=np.sum)
     with pd.ExcelWriter('final/' + projectName + '.xlsx') as writer:
         result.to_excel(writer, sheet_name='Raw Data')
         # pivot.to_excel(writer, sheet_name='Pivot')
     return "Done"
 
 
-# print(
-#     downloadTimeLogs(serverURL='http://prp.atlassian.net', projectName='PRP')
-# )
+def listNextSprintIssues(sprintName):
+    jira_options = {
+        'server': SERVER_URL
+    }
+    jac = JIRA(options=jira_options, basic_auth=(JIRA_USER, JIRA_PASS))
+    nextSprintWorkload = jac.search_issues(
+        'project = BP AND Sprint = ' +
+        sprintName +
+        'ORDER BY Rank ASC')
+    for issue in nextSprintWorkload:
+        try:
+            print(str(issue)+" - " + issue.fields.summary +
+                  '('+issue.fields.timetracking.originalEstimate+')')
+        except AttributeError as ae:
+            print(str(issue)+" - " + issue.fields.summary)
+            print(ae)
 
-print(
-    readAllProjects()
-    )
+
+if __name__ == "__main__":
+    # listNextSprintIssues('"BP Sprint 46"')
+    # readAllProjects()
+    downloadTimeLogs("BP")
