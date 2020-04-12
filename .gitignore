@@ -2,4 +2,4 @@ myVenv
 .vscode
 config.py
 final
-
+__pycache__

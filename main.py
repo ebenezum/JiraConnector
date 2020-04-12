@@ -1,9 +1,28 @@
 # -*- coding: utf-8 -*-
 
 from jira import JIRA
+import datetime
 import pandas as pd
 import json
 from config import SERVER_URL, JIRA_PASS, JIRA_USER
+
+
+def estimateStartDate(offset):
+    dateNow = datetime.datetime.now().date()
+    return dateNow - datetime.timedelta(offset)
+
+
+def strToDate(DateInString: str):
+    return datetime.datetime.strptime(DateInString[:10], '%Y-%m-%d').date()
+
+
+def ifNone(valueToTest, alterValue):
+    result = None
+    if valueToTest is None:
+        result = alterValue
+    else:
+        result = valueToTest
+    return result
 
 
 def readAllProjects():
@@ -19,11 +38,11 @@ def readAllProjects():
     return json.dumps(projNames)
 
 
-def downloadTimeLogs(projectName):
+def downloadTimeLogs(projectName, dateOffset):
     jira_options = {
         'server': SERVER_URL
     }
-
+    startDate = estimateStartDate(dateOffset)
     jac = JIRA(options=jira_options, basic_auth=(JIRA_USER, JIRA_PASS))
     block_size = 100
     block_num = 0
@@ -32,6 +51,8 @@ def downloadTimeLogs(projectName):
     wlTS = list()
     summ = list()
     iKey = list()
+    pKey = list()
+    pDesc = list()
 
     while True:
         start_idx = block_num * block_size
@@ -43,24 +64,40 @@ def downloadTimeLogs(projectName):
 
         for issue in issues_in_project:
             wrkl = jac.worklogs(issue.key)
+            # print(
+            #     "Parent: " + issue.fields.parent.key +
+            #     " Child: " + issue.key
+            #     )
             for wrk in wrkl:
-                summ.append(issue.fields.summary)
-                iKey.append(issue.key)
-                auth.append(wrk.author)
-                wlTS.append(wrk.timeSpentSeconds/3600)
-                wlDt.append(wrk.started[:10])
-    preFrame = {
-        'Summary': summ,
-        'Key': iKey,
-        'Author': auth,
-        'TimeSpent': wlTS,
-        'Date': wlDt
-    }
-    result = pd.DataFrame(preFrame)
-    with pd.ExcelWriter('final/' + projectName + '.xlsx') as writer:
-        result.to_excel(writer, sheet_name='Raw Data')
-        # pivot.to_excel(writer, sheet_name='Pivot')
-    return "Done"
+                if strToDate(wrk.created) >= startDate:
+                    try:
+                        pKey.append(issue.fields.parent.key)
+                        pDesc.append(issue.fields.parent.fields.summary)
+                    except AttributeError:
+                        pKey.append(issue.key)
+                        pDesc.append(issue.fields.summary)
+                    finally:
+                        summ.append(issue.fields.summary)
+                        iKey.append(issue.key)
+                        auth.append(wrk.author)
+                        wlTS.append(wrk.timeSpentSeconds/3600)
+                        wlDt.append(wrk.started[:10])
+            preFrame = {
+                'Summary': summ,
+                'Key': iKey,
+                'Parent Key': pKey,
+                'Parent Description': pDesc,
+                'Author': auth,
+                'TimeSpent': wlTS,
+                'Date': wlDt
+            }
+            result = pd.DataFrame(preFrame)
+            result.to_csv(
+                'final/' + projectName + '.csv',
+                mode='a',
+                header=False,
+                sep='|')
+    print("Done")
 
 
 def listNextSprintIssues(sprintName):
@@ -84,4 +121,4 @@ def listNextSprintIssues(sprintName):
 if __name__ == "__main__":
     # listNextSprintIssues('"BP Sprint 46"')
     # readAllProjects()
-    downloadTimeLogs("BP")
+    downloadTimeLogs("BP", 10)
