@@ -25,7 +25,6 @@ def downloadTimeLogs(projectName):
     }
 
     jac = JIRA(options=jira_options, basic_auth=(JIRA_USER, JIRA_PASS))
-
     block_size = 100
     block_num = 0
     auth = list()
